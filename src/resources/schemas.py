@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 class ResourceResponse(BaseModel):
@@ -11,3 +11,12 @@ class ResourceResponse(BaseModel):
 class ResourceCreate(BaseModel):
     name: str = Field(min_length=1, max_length=256)
     content_type: str | None = None
+
+
+class CategoryAccessRequest(BaseModel):
+    email: EmailStr
+
+
+class CategoryAccessResponse(BaseModel):
+    cloudfront_url: str
+    expires_at: int

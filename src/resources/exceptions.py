@@ -20,3 +20,13 @@ class S3AccessError(AppException):
 class DynamoDBAccessError(AppException):
     status_code = 502
     detail = ErrorCode.DYNAMODB_ACCESS_ERROR
+
+
+class AccessDenied(AppException):
+    status_code = 403
+    detail = ErrorCode.ACCESS_DENIED
+
+
+class CloudFrontSigningError(AppException):
+    status_code = 502
+    detail = ErrorCode.CLOUDFRONT_SIGNING_ERROR
