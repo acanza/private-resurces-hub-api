@@ -162,3 +162,7 @@ htmlcov/
 
 # Ruff
 .ruff_cache/
+
+#Artifacts
+dist/
+build/
