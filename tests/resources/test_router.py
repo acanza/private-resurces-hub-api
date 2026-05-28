@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 
 from src.resources.dependencies import valid_category_access, valid_resource_id
-from src.resources.exceptions import AccessDenied
+from src.resources.exceptions import AccessDenied, ResourceNotFound
 from src.resources.schemas import CategoryAccessRequest
 from src.main import app
 
@@ -25,7 +25,7 @@ def _override_valid_resource():
                 "s3_key": "resources/sample.pdf",
                 "content_type": "application/pdf",
             }
-        return None
+        raise ResourceNotFound()
 
     from src.resources import dependencies
     original = dependencies.valid_resource_id
