@@ -2,7 +2,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class ResourcesConfig(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="AWS_", env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="AWS_", env_file=".env", extra="ignore"
+    )
 
     REGION: str = "eu-west-3"
     S3_BUCKET: str

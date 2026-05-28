@@ -2,12 +2,12 @@ from src.exceptions import AppError
 from src.resources.constants import ErrorCode
 
 
-class ResourceNotFound(AppError):
+class ResourceNotFoundError(AppError):
     status_code = 404
     detail = ErrorCode.RESOURCE_NOT_FOUND
 
 
-class ResourceAlreadyExists(AppError):
+class ResourceAlreadyExistsError(AppError):
     status_code = 409
     detail = ErrorCode.RESOURCE_ALREADY_EXISTS
 
@@ -22,7 +22,7 @@ class DynamoDBAccessError(AppError):
     detail = ErrorCode.DYNAMODB_ACCESS_ERROR
 
 
-class AccessDenied(AppError):
+class AccessDeniedError(AppError):
     status_code = 403
     detail = ErrorCode.ACCESS_DENIED
 

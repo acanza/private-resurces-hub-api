@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 
 from src.resources.dependencies import valid_category_access, valid_resource_id
-from src.resources.exceptions import AccessDenied, ResourceNotFound
+from src.resources.exceptions import AccessDeniedError, ResourceNotFoundError
 from src.resources.schemas import CategoryAccessRequest
 from src.main import app
 
@@ -25,7 +25,7 @@ def _override_valid_resource():
                 "s3_key": "resources/sample.pdf",
                 "content_type": "application/pdf",
             }
-        raise ResourceNotFound()
+        raise ResourceNotFoundError()
 
     from src.resources import dependencies
     original = dependencies.valid_resource_id
@@ -71,7 +71,7 @@ def _override_access_denied():
     async def fake_access(
         category_id: str, payload: CategoryAccessRequest
     ) -> CategoryAccessRequest:
-        raise AccessDenied()
+        raise AccessDeniedError()
 
     app.dependency_overrides[valid_category_access] = fake_access
     yield
