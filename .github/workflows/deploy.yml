@@ -1,0 +1,59 @@
+name: Deploy to Lambda
+
+on:
+  workflow_dispatch:
+
+# GitHub Variables required (Settings → Variables):
+#   LAMBDA_FUNCTION_NAME  — name of the Lambda function in AWS
+#   AWS_REGION            — e.g. eu-west-3
+#
+# GitHub Secrets required (Settings → Secrets):
+#   AWS_ROLE_ARN          — IAM role ARN that GitHub Actions will assume via OIDC
+#                           Trust policy must allow: principal oidc.github.com, repo <org>/<repo>
+
+permissions:
+  id-token: write   # required for OIDC token request
+  contents: read
+
+jobs:
+  deploy:
+    name: Package & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Install dependencies into package directory
+        run: pip install --target package --upgrade .
+
+      - name: Build deployment ZIP
+        run: |
+          cd package
+          zip -r ../deploy.zip . --quiet
+          cd ..
+          echo "ZIP size: $(du -sh deploy.zip | cut -f1)"
+
+      - name: Deploy to Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ vars.LAMBDA_FUNCTION_NAME }} \
+            --zip-file fileb://deploy.zip \
+            --region ${{ vars.AWS_REGION }}
+
+      - name: Wait for update to complete
+        run: |
+          aws lambda wait function-updated \
+            --function-name ${{ vars.LAMBDA_FUNCTION_NAME }} \
+            --region ${{ vars.AWS_REGION }}

@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
+from mangum import Mangum
 
 from src.config import settings
 from src.exceptions import AppException, app_exception_handler
@@ -28,3 +29,5 @@ app = FastAPI(**app_kwargs)
 
 app.add_exception_handler(AppException, app_exception_handler)
 app.include_router(resources_router)
+
+handler = Mangum(app)
