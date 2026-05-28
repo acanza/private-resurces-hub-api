@@ -2,6 +2,10 @@ name: Deploy to Lambda
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
 
 # GitHub Variables required (Settings → Variables):
 #   LAMBDA_FUNCTION_NAME  — name of the Lambda function in AWS
@@ -19,6 +23,7 @@ jobs:
   deploy:
     name: Package & Deploy
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
 
     steps:
       - uses: actions/checkout@v4
