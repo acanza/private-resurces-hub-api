@@ -1,32 +1,32 @@
-from src.exceptions import AppException
+from src.exceptions import AppError
 from src.resources.constants import ErrorCode
 
 
-class ResourceNotFound(AppException):
+class ResourceNotFound(AppError):
     status_code = 404
     detail = ErrorCode.RESOURCE_NOT_FOUND
 
 
-class ResourceAlreadyExists(AppException):
+class ResourceAlreadyExists(AppError):
     status_code = 409
     detail = ErrorCode.RESOURCE_ALREADY_EXISTS
 
 
-class S3AccessError(AppException):
+class S3AccessError(AppError):
     status_code = 502
     detail = ErrorCode.S3_ACCESS_ERROR
 
 
-class DynamoDBAccessError(AppException):
+class DynamoDBAccessError(AppError):
     status_code = 502
     detail = ErrorCode.DYNAMODB_ACCESS_ERROR
 
 
-class AccessDenied(AppException):
+class AccessDenied(AppError):
     status_code = 403
     detail = ErrorCode.ACCESS_DENIED
 
 
-class CloudFrontSigningError(AppException):
+class CloudFrontSigningError(AppError):
     status_code = 502
     detail = ErrorCode.CLOUDFRONT_SIGNING_ERROR
