@@ -1,10 +1,10 @@
 import pytest
 from httpx import AsyncClient
 
-from src.resources.dependencies import valid_category_access, valid_resource_id
-from src.resources.exceptions import AccessDenied, ResourceNotFound
-from src.resources.schemas import CategoryAccessRequest
 from src.main import app
+from src.resources.dependencies import valid_category_access, valid_resource_id
+from src.resources.exceptions import AccessDeniedError, ResourceNotFoundError
+from src.resources.schemas import CategoryAccessRequest
 
 FAKE_CF_COOKIES = {
     "CloudFront-Policy": "fake-policy",
@@ -25,10 +25,8 @@ def _override_valid_resource():
                 "s3_key": "resources/sample.pdf",
                 "content_type": "application/pdf",
             }
-        raise ResourceNotFound()
+        raise ResourceNotFoundError()
 
-    from src.resources import dependencies
-    original = dependencies.valid_resource_id
     app.dependency_overrides[valid_resource_id] = fake_resource
     yield
     app.dependency_overrides.clear()
@@ -71,7 +69,7 @@ def _override_access_denied():
     async def fake_access(
         category_id: str, payload: CategoryAccessRequest
     ) -> CategoryAccessRequest:
-        raise AccessDenied()
+        raise AccessDeniedError()
 
     app.dependency_overrides[valid_category_access] = fake_access
     yield
@@ -82,16 +80,19 @@ def _override_access_denied():
 async def test_request_category_access_ok(
     client: AsyncClient, _override_access_granted, monkeypatch
 ):
+    import time
+
     from src.resources import service
     from src.resources.service import CloudFrontCookies
-    import time
 
     fake_expires = int(time.time()) + 3600
 
     monkeypatch.setattr(
         service,
         "build_cloudfront_signed_cookies",
-        lambda cat_id: CloudFrontCookies(cookies=FAKE_CF_COOKIES, expires_at=fake_expires),
+        lambda cat_id: CloudFrontCookies(
+            cookies=FAKE_CF_COOKIES, expires_at=fake_expires
+        ),
     )
     monkeypatch.setattr(
         service.resources_settings,

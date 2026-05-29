@@ -1,11 +1,11 @@
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from mangum import Mangum
 
 from src.config import settings
-from src.exceptions import AppException, app_exception_handler
+from src.exceptions import AppError, app_exception_handler
 from src.resources.router import router as resources_router
 
 SHOW_DOCS_IN = {"local", "staging"}
@@ -27,7 +27,7 @@ if settings.ENVIRONMENT not in SHOW_DOCS_IN:
 
 app = FastAPI(**app_kwargs)
 
-app.add_exception_handler(AppException, app_exception_handler)
+app.add_exception_handler(AppError, app_exception_handler)
 app.include_router(resources_router)
 
 handler = Mangum(app)
