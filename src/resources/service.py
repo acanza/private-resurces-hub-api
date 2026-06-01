@@ -19,9 +19,7 @@ async def get_resource(resource_id: str) -> dict | None:
             "dynamodb", region_name=resources_settings.REGION
         ) as dynamodb:
             table = await dynamodb.Table(resources_settings.DYNAMODB_TABLE)
-            response = await table.get_item(
-                Key={"pk": resource_id, "sk": "METADATA"}
-            )
+            response = await table.get_item(Key={"pk": resource_id, "sk": "METADATA"})
             item = response.get("Item")
             if not item:
                 return None
