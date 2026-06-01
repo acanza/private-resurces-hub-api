@@ -13,7 +13,26 @@ from src.resources.exceptions import CloudFrontSigningError, DynamoDBAccessError
 
 
 async def get_resource(resource_id: str) -> dict | None:
-    raise NotImplementedError
+    session = aioboto3.Session()
+    try:
+        async with session.resource(
+            "dynamodb", region_name=resources_settings.REGION
+        ) as dynamodb:
+            table = await dynamodb.Table(resources_settings.DYNAMODB_TABLE)
+            response = await table.get_item(
+                Key={"pk": resource_id, "sk": "METADATA"}
+            )
+            item = response.get("Item")
+            if not item:
+                return None
+            return {
+                "id": resource_id,
+                "name": item["name"],
+                "s3_key": item["s3_key"],
+                "content_type": item.get("content_type"),
+            }
+    except ClientError as exc:
+        raise DynamoDBAccessError() from exc
 
 
 async def check_user_access(email: str, category_id: str) -> bool:
@@ -23,12 +42,10 @@ async def check_user_access(email: str, category_id: str) -> bool:
             "dynamodb", region_name=resources_settings.REGION
         ) as dynamodb:
             table = await dynamodb.Table(resources_settings.DYNAMODB_TABLE)
-            response = await table.get_item(Key={"pk": email})
-            item = response.get("Item")
-            if not item:
-                return False
-            allowed: set[str] = item.get("allowed_categories", set())
-            return category_id in allowed
+            response = await table.get_item(
+                Key={"pk": email, "sk": f"RESOURCE#{category_id}"}
+            )
+            return "Item" in response
     except ClientError as exc:
         raise DynamoDBAccessError() from exc
 
