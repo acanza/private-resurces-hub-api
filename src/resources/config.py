@@ -6,7 +6,7 @@ class ResourcesConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     REGION: str = Field(default="eu-west-3", validation_alias="AWS_REGION")
-    S3_BUCKET: str | None = None
+    S3_BUCKET: str = Field(validation_alias="S3_BUCKET_NAME")
     DYNAMODB_TABLE: str = Field(validation_alias="DYNAMODB_TABLE_NAME")
     CF_DISTRIBUTION_DOMAIN: str = Field(
         default="", validation_alias="PRIVATE_DISTRIBUTION_DOMAIN_NAME"
