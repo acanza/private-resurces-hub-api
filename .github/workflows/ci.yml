@@ -32,5 +32,5 @@ jobs:
       - name: Run tests
         run: pytest tests/ -v
         env:
-          AWS_S3_BUCKET: ci-bucket
-          AWS_DYNAMODB_TABLE: ci-table
+          S3_BUCKET_NAME: ci-bucket
+          DYNAMODB_TABLE_NAME: ci-table
