@@ -50,7 +50,7 @@ async def request_category_access(
     access: CategoryAccessDep,
     response: Response,
 ) -> CategoryAccessResponse:
-    signed = service.build_cloudfront_signed_cookies(category_id)
+    signed = await service.build_cloudfront_signed_cookies(category_id)
 
     cookie_attrs = {
         "secure": True,

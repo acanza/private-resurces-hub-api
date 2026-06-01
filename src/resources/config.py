@@ -12,7 +12,7 @@ class ResourcesConfig(BaseSettings):
         default="", validation_alias="PRIVATE_DISTRIBUTION_DOMAIN_NAME"
     )
     CF_KEY_PAIR_ID: str = Field(default="", validation_alias="CLOUDFRONT_KEY_PAIR_ID")
-    CF_PRIVATE_KEY: str = ""
+    CF_SECRET_NAME: str = "prh/dev/cloudfront-private-key"
     CF_COOKIE_MAX_AGE_SECONDS: int = 3600
 
 
