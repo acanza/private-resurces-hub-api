@@ -81,7 +81,6 @@ def _cf_b64(data: bytes) -> str:
 
 
 async def build_cloudfront_signed_cookies(category_id: str) -> CloudFrontCookies:
-    private_key_pem = await _get_cf_private_key()
     expires_at = int(time.time()) + resources_settings.CF_COOKIE_MAX_AGE_SECONDS
     resource_url = (
         f"https://{resources_settings.CF_DISTRIBUTION_DOMAIN}/{category_id}/*"
@@ -98,6 +97,7 @@ async def build_cloudfront_signed_cookies(category_id: str) -> CloudFrontCookies
         separators=(",", ":"),
     )
     try:
+        private_key_pem = await _get_cf_private_key()
         private_key = serialization.load_pem_private_key(
             private_key_pem.encode(),
             password=None,
