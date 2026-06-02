@@ -87,13 +87,10 @@ async def test_request_category_access_ok(
 
     fake_expires = int(time.time()) + 3600
 
-    monkeypatch.setattr(
-        service,
-        "build_cloudfront_signed_cookies",
-        lambda cat_id: CloudFrontCookies(
-            cookies=FAKE_CF_COOKIES, expires_at=fake_expires
-        ),
-    )
+    async def fake_build(cat_id: str) -> CloudFrontCookies:
+        return CloudFrontCookies(cookies=FAKE_CF_COOKIES, expires_at=fake_expires)
+
+    monkeypatch.setattr(service, "build_cloudfront_signed_cookies", fake_build)
     monkeypatch.setattr(
         service.resources_settings,
         "CF_DISTRIBUTION_DOMAIN",

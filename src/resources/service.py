@@ -11,6 +11,22 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from src.resources.config import resources_settings
 from src.resources.exceptions import CloudFrontSigningError, DynamoDBAccessError
 
+_cf_private_key_cache: str | None = None
+
+
+async def _get_cf_private_key() -> str:
+    global _cf_private_key_cache
+    if _cf_private_key_cache is None:
+        session = aioboto3.Session()
+        async with session.client(
+            "secretsmanager", region_name=resources_settings.REGION
+        ) as client:
+            response = await client.get_secret_value(
+                SecretId=resources_settings.CF_SECRET_NAME
+            )
+            _cf_private_key_cache = response["SecretString"]
+    return _cf_private_key_cache
+
 
 async def get_resource(resource_id: str) -> dict | None:
     session = aioboto3.Session()
@@ -64,7 +80,8 @@ def _cf_b64(data: bytes) -> str:
     )
 
 
-def build_cloudfront_signed_cookies(category_id: str) -> CloudFrontCookies:
+async def build_cloudfront_signed_cookies(category_id: str) -> CloudFrontCookies:
+    private_key_pem = await _get_cf_private_key()
     expires_at = int(time.time()) + resources_settings.CF_COOKIE_MAX_AGE_SECONDS
     resource_url = (
         f"https://{resources_settings.CF_DISTRIBUTION_DOMAIN}/{category_id}/*"
@@ -82,7 +99,7 @@ def build_cloudfront_signed_cookies(category_id: str) -> CloudFrontCookies:
     )
     try:
         private_key = serialization.load_pem_private_key(
-            resources_settings.CF_PRIVATE_KEY.encode(),
+            private_key_pem.encode(),
             password=None,
         )
         signature_bytes = private_key.sign(  # noqa: S303

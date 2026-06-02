@@ -1,5 +1,7 @@
 repos:
-  - repo: https://github.com/psf/black
-    rev: 24.4.2  # use the version matching your CI
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.15
     hooks:
-      - id: black
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
