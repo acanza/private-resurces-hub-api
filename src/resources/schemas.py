@@ -20,3 +20,13 @@ class CategoryAccessRequest(BaseModel):
 class CategoryAccessResponse(BaseModel):
     cloudfront_url: str
     expires_at: int
+
+
+class ResourceItemResponse(BaseModel):
+    name: str
+    has_access: bool
+    access_url: str | None = None
+
+
+class ResourceListResponse(BaseModel):
+    resources: list[ResourceItemResponse]

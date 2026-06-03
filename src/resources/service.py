@@ -9,7 +9,11 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 from src.resources.config import resources_settings
-from src.resources.exceptions import CloudFrontSigningError, DynamoDBAccessError
+from src.resources.exceptions import (
+    CloudFrontSigningError,
+    DynamoDBAccessError,
+    S3AccessError,
+)
 
 _cf_private_key_cache: str | None = None
 
@@ -62,6 +66,46 @@ async def check_user_access(email: str, category_id: str) -> bool:
             return "Item" in response
     except ClientError as exc:
         raise DynamoDBAccessError() from exc
+
+
+async def list_resources_with_access(
+    email: str,
+) -> list[dict[str, str | bool | None]]:
+    """List all S3 directories and check user access permissions."""
+    session = aioboto3.Session()
+    try:
+        # Get all directories from S3
+        async with session.client(
+            "s3", region_name=resources_settings.REGION
+        ) as s3_client:
+            response = await s3_client.list_objects_v2(
+                Bucket=resources_settings.S3_BUCKET,
+                Delimiter="/",
+            )
+
+        directories = []
+        # Process common prefixes (directories)
+        if "CommonPrefixes" in response:
+            for prefix_info in response["CommonPrefixes"]:
+                prefix = prefix_info["Prefix"]
+                # Remove trailing slash to get directory name
+                directory_name = prefix.rstrip("/")
+
+                # Check if user has access to this directory
+                has_access = await check_user_access(email, directory_name)
+
+                resource_item = {
+                    "name": directory_name,
+                    "has_access": has_access,
+                    "access_url": (
+                        f"/resources/{directory_name}/access" if has_access else None
+                    ),
+                }
+                directories.append(resource_item)
+
+        return directories
+    except ClientError as exc:
+        raise S3AccessError() from exc
 
 
 @dataclass

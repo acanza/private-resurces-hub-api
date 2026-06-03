@@ -135,3 +135,79 @@ async def test_request_category_access_invalid_email(
         json={"email": "not-an-email"},
     )
     assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# POST /
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_resources_ok(client: AsyncClient, monkeypatch):
+    from src.resources import service
+
+    async def fake_list_resources(email: str) -> list[dict]:
+        return [
+            {
+                "name": "tech",
+                "has_access": True,
+                "access_url": "/resources/tech/access",
+            },
+            {"name": "finance", "has_access": False, "access_url": None},
+            {"name": "hr", "has_access": True, "access_url": "/resources/hr/access"},
+        ]
+
+    monkeypatch.setattr(service, "list_resources_with_access", fake_list_resources)
+
+    resp = await client.post(
+        "/resources/",
+        json={"email": "user@example.com"},
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "resources" in body
+    assert len(body["resources"]) == 3
+
+    # Check first resource (with access)
+    assert body["resources"][0]["name"] == "tech"
+    assert body["resources"][0]["has_access"] is True
+    assert body["resources"][0]["access_url"] == "/resources/tech/access"
+
+    # Check second resource (without access)
+    assert body["resources"][1]["name"] == "finance"
+    assert body["resources"][1]["has_access"] is False
+    assert body["resources"][1]["access_url"] is None
+
+    # Check third resource (with access)
+    assert body["resources"][2]["name"] == "hr"
+    assert body["resources"][2]["has_access"] is True
+    assert body["resources"][2]["access_url"] == "/resources/hr/access"
+
+
+@pytest.mark.asyncio
+async def test_list_resources_empty(client: AsyncClient, monkeypatch):
+    from src.resources import service
+
+    async def fake_list_resources(email: str) -> list[dict]:
+        return []
+
+    monkeypatch.setattr(service, "list_resources_with_access", fake_list_resources)
+
+    resp = await client.post(
+        "/resources/",
+        json={"email": "user@example.com"},
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["resources"] == []
+
+
+@pytest.mark.asyncio
+async def test_list_resources_invalid_email(client: AsyncClient):
+    resp = await client.post(
+        "/resources/",
+        json={"email": "not-an-email"},
+    )
+    assert resp.status_code == 422

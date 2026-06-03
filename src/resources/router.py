@@ -8,6 +8,7 @@ from src.resources.dependencies import valid_category_access, valid_resource_id
 from src.resources.schemas import (
     CategoryAccessRequest,
     CategoryAccessResponse,
+    ResourceListResponse,
     ResourceResponse,
 )
 
@@ -15,6 +16,25 @@ router = APIRouter(prefix="/resources", tags=["resources"])
 
 ResourceDep = Annotated[dict, Depends(valid_resource_id)]
 CategoryAccessDep = Annotated[CategoryAccessRequest, Depends(valid_category_access)]
+
+
+@router.post(
+    "/",
+    response_model=ResourceListResponse,
+    status_code=status.HTTP_200_OK,
+    summary="List all resources with access information",
+    description=(
+        "Lists all directories in the S3 bucket with user's "
+        "access permissions. Requires Bearer token authentication "
+        "from Cognito."
+    ),
+    responses={
+        status.HTTP_502_BAD_GATEWAY: {"description": "Upstream AWS error"},
+    },
+)
+async def list_resources(payload: CategoryAccessRequest) -> ResourceListResponse:
+    resources = await service.list_resources_with_access(payload.email)
+    return ResourceListResponse(resources=resources)
 
 
 @router.get(
