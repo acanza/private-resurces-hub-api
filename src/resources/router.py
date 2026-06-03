@@ -18,7 +18,7 @@ ResourceDep = Annotated[dict, Depends(valid_resource_id)]
 CategoryAccessDep = Annotated[CategoryAccessRequest, Depends(valid_category_access)]
 
 
-@router.get(
+@router.post(
     "/",
     response_model=ResourceListResponse,
     status_code=status.HTTP_200_OK,

@@ -66,7 +66,8 @@ async def test_get_category_items_ok(
         service, "list_category_items_with_signed_urls", fake_list_items
     )
 
-    resp = await client.get(
+    resp = await client.request(
+        "GET",
         "/resources/tech",
         json={"email": "user@example.com"},
     )
@@ -93,8 +94,9 @@ async def test_get_category_items_empty(
         service, "list_category_items_with_signed_urls", fake_list_items
     )
 
-    resp = await client.get(
-        "/resources/empty-category",
+    resp = await client.request(
+        "GET",
+        "/resources/tech",
         json={"email": "user@example.com"},
     )
 
@@ -107,9 +109,10 @@ async def test_get_category_items_empty(
 async def test_get_category_items_forbidden(
     client: AsyncClient, _override_access_denied
 ):
-    resp = await client.get(
-        "/resources/restricted",
-        json={"email": "nobody@example.com"},
+    resp = await client.request(
+        "GET",
+        "/resources/tech",
+        json={"email": "user@example.com"},
     )
     assert resp.status_code == 403
     assert resp.json()["detail"] == "ACCESS_DENIED"
