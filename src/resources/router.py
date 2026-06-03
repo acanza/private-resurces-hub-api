@@ -1,10 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, Response, status
+from fastapi import APIRouter, Depends, Response, status
 
 from src.resources import service
 from src.resources.config import resources_settings
-from src.resources.dependencies import valid_category_access, valid_resource_id
+from src.resources.dependencies import valid_category_access
 from src.resources.schemas import (
     CategoryAccessRequest,
     CategoryAccessResponse,
@@ -14,7 +14,6 @@ from src.resources.schemas import (
 
 router = APIRouter(prefix="/resources", tags=["resources"])
 
-ResourceDep = Annotated[dict, Depends(valid_resource_id)]
 CategoryAccessDep = Annotated[CategoryAccessRequest, Depends(valid_category_access)]
 
 
@@ -55,7 +54,7 @@ async def list_resources(payload: CategoryAccessRequest) -> ResourceListResponse
 )
 async def get_category_items(
     category_id: str,
-    payload: Annotated[CategoryAccessRequest, Body()],
+    payload: Annotated[CategoryAccessRequest, Depends(valid_category_access)],
 ) -> CategoryItemsResponse:
     items = await service.list_category_items_with_signed_urls(
         payload.email, category_id
