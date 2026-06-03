@@ -30,3 +30,12 @@ class ResourceItemResponse(BaseModel):
 
 class ResourceListResponse(BaseModel):
     resources: list[ResourceItemResponse]
+
+
+class CategoryItemResponse(BaseModel):
+    name: str
+    signed_url: str
+
+
+class CategoryItemsResponse(BaseModel):
+    items: list[CategoryItemResponse]

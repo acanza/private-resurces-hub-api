@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Body, Depends, Response, status
 
 from src.resources import service
 from src.resources.config import resources_settings
@@ -8,8 +8,8 @@ from src.resources.dependencies import valid_category_access, valid_resource_id
 from src.resources.schemas import (
     CategoryAccessRequest,
     CategoryAccessResponse,
+    CategoryItemsResponse,
     ResourceListResponse,
-    ResourceResponse,
 )
 
 router = APIRouter(prefix="/resources", tags=["resources"])
@@ -38,16 +38,28 @@ async def list_resources(payload: CategoryAccessRequest) -> ResourceListResponse
 
 
 @router.get(
-    "/{resource_id}",
-    response_model=ResourceResponse,
+    "/{category_id}",
+    response_model=CategoryItemsResponse,
     status_code=status.HTTP_200_OK,
-    summary="Get a resource by ID",
+    summary="List items in a category with signed URLs",
+    description=(
+        "Lists all items in a category directory with CloudFront signed URLs. "
+        "Requires Bearer token authentication from Cognito and user must have "
+        "access to the category."
+    ),
     responses={
-        status.HTTP_404_NOT_FOUND: {"description": "Resource not found"},
+        status.HTTP_403_FORBIDDEN: {"description": "User does not have access"},
+        status.HTTP_502_BAD_GATEWAY: {"description": "Upstream AWS error"},
     },
 )
-async def get_resource(resource: ResourceDep) -> ResourceResponse:
-    return resource
+async def get_category_items(
+    category_id: str,
+    payload: Annotated[CategoryAccessRequest, Body()],
+) -> CategoryItemsResponse:
+    items = await service.list_category_items_with_signed_urls(
+        payload.email, category_id
+    )
+    return CategoryItemsResponse(items=items)
 
 
 @router.post(
