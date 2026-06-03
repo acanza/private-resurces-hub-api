@@ -18,7 +18,7 @@ ResourceDep = Annotated[dict, Depends(valid_resource_id)]
 CategoryAccessDep = Annotated[CategoryAccessRequest, Depends(valid_category_access)]
 
 
-@router.post(
+@router.get(
     "/",
     response_model=ResourceListResponse,
     status_code=status.HTTP_200_OK,
@@ -29,6 +29,7 @@ CategoryAccessDep = Annotated[CategoryAccessRequest, Depends(valid_category_acce
         "from Cognito."
     ),
     responses={
+        status.HTTP_403_FORBIDDEN: {"description": "User does not have access"},
         status.HTTP_502_BAD_GATEWAY: {"description": "Upstream AWS error"},
     },
 )
