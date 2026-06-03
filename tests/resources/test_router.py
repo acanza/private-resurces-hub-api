@@ -2,8 +2,8 @@ import pytest
 from httpx import AsyncClient
 
 from src.main import app
-from src.resources.dependencies import valid_category_access, valid_resource_id
-from src.resources.exceptions import AccessDeniedError, ResourceNotFoundError
+from src.resources.dependencies import valid_category_access
+from src.resources.exceptions import AccessDeniedError
 from src.resources.schemas import CategoryAccessRequest
 
 FAKE_CF_COOKIES = {
@@ -15,40 +15,8 @@ FAKE_CF_COOKIES = {
 FAKE_CF_DOMAIN = "d123.cloudfront.net"
 
 
-@pytest.fixture(autouse=True)
-def _override_valid_resource():
-    async def fake_resource(resource_id: str) -> dict:
-        if resource_id == "existing-id":
-            return {
-                "id": "existing-id",
-                "name": "Sample Resource",
-                "s3_key": "resources/sample.pdf",
-                "content_type": "application/pdf",
-            }
-        raise ResourceNotFoundError()
-
-    app.dependency_overrides[valid_resource_id] = fake_resource
-    yield
-    app.dependency_overrides.clear()
-
-
-@pytest.mark.asyncio
-async def test_get_resource_ok(client: AsyncClient):
-    resp = await client.get("/resources/existing-id")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["id"] == "existing-id"
-    assert data["name"] == "Sample Resource"
-
-
-@pytest.mark.asyncio
-async def test_get_resource_not_found(client: AsyncClient):
-    resp = await client.get("/resources/nonexistent-id")
-    assert resp.status_code == 404
-
-
 # ---------------------------------------------------------------------------
-# POST /{category_id}/access
+# GET /{category_id}
 # ---------------------------------------------------------------------------
 
 
@@ -77,8 +45,111 @@ def _override_access_denied():
 
 
 @pytest.mark.asyncio
-async def test_request_category_access_ok(
+async def test_get_category_items_ok(
     client: AsyncClient, _override_access_granted, monkeypatch
+):
+    from src.resources import service
+
+    async def fake_list_items(email: str, category_id: str) -> list[dict]:
+        return [
+            {
+                "name": "item-a.pdf",
+                "signed_url": "https://d123.cloudfront.net/tech/item-a.pdf?Policy=...",
+            },
+            {
+                "name": "item-b.txt",
+                "signed_url": "https://d123.cloudfront.net/tech/item-b.txt?Policy=...",
+            },
+        ]
+
+    monkeypatch.setattr(
+        service, "list_category_items_with_signed_urls", fake_list_items
+    )
+
+    resp = await client.request(
+        "GET",
+        "/resources/tech",
+        json={"email": "user@example.com"},
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "items" in body
+    assert len(body["items"]) == 2
+    assert body["items"][0]["name"] == "item-a.pdf"
+    assert "signed_url" in body["items"][0]
+    assert body["items"][1]["name"] == "item-b.txt"
+
+
+@pytest.mark.asyncio
+async def test_get_category_items_empty(
+    client: AsyncClient, _override_access_granted, monkeypatch
+):
+    from src.resources import service
+
+    async def fake_list_items(email: str, category_id: str) -> list[dict]:
+        return []
+
+    monkeypatch.setattr(
+        service, "list_category_items_with_signed_urls", fake_list_items
+    )
+
+    resp = await client.request(
+        "GET",
+        "/resources/tech",
+        json={"email": "user@example.com"},
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_get_category_items_forbidden(
+    client: AsyncClient, _override_access_denied
+):
+    resp = await client.request(
+        "GET",
+        "/resources/tech",
+        json={"email": "user@example.com"},
+    )
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == "ACCESS_DENIED"
+
+
+# ---------------------------------------------------------------------------
+# POST /{category_id}/access
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def _override_access_granted_post():
+    async def fake_access(
+        category_id: str, payload: CategoryAccessRequest
+    ) -> CategoryAccessRequest:
+        return payload
+
+    app.dependency_overrides[valid_category_access] = fake_access
+    yield
+    app.dependency_overrides.pop(valid_category_access, None)
+
+
+@pytest.fixture()
+def _override_access_denied_post():
+    async def fake_access(
+        category_id: str, payload: CategoryAccessRequest
+    ) -> CategoryAccessRequest:
+        raise AccessDeniedError()
+
+    app.dependency_overrides[valid_category_access] = fake_access
+    yield
+    app.dependency_overrides.pop(valid_category_access, None)
+
+
+@pytest.mark.asyncio
+async def test_request_category_access_ok(
+    client: AsyncClient, _override_access_granted_post, monkeypatch
 ):
     import time
 
@@ -116,7 +187,7 @@ async def test_request_category_access_ok(
 
 @pytest.mark.asyncio
 async def test_request_category_access_forbidden(
-    client: AsyncClient, _override_access_denied
+    client: AsyncClient, _override_access_denied_post
 ):
     resp = await client.post(
         "/resources/marketing/access",
@@ -128,10 +199,86 @@ async def test_request_category_access_forbidden(
 
 @pytest.mark.asyncio
 async def test_request_category_access_invalid_email(
-    client: AsyncClient, _override_access_granted
+    client: AsyncClient, _override_access_granted_post
 ):
     resp = await client.post(
         "/resources/marketing/access",
+        json={"email": "not-an-email"},
+    )
+    assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# POST /
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_resources_ok(client: AsyncClient, monkeypatch):
+    from src.resources import service
+
+    async def fake_list_resources(email: str) -> list[dict]:
+        return [
+            {
+                "name": "tech",
+                "has_access": True,
+                "access_url": "/resources/tech/access",
+            },
+            {"name": "finance", "has_access": False, "access_url": None},
+            {"name": "hr", "has_access": True, "access_url": "/resources/hr/access"},
+        ]
+
+    monkeypatch.setattr(service, "list_resources_with_access", fake_list_resources)
+
+    resp = await client.post(
+        "/resources/",
+        json={"email": "user@example.com"},
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "resources" in body
+    assert len(body["resources"]) == 3
+
+    # Check first resource (with access)
+    assert body["resources"][0]["name"] == "tech"
+    assert body["resources"][0]["has_access"] is True
+    assert body["resources"][0]["access_url"] == "/resources/tech/access"
+
+    # Check second resource (without access)
+    assert body["resources"][1]["name"] == "finance"
+    assert body["resources"][1]["has_access"] is False
+    assert body["resources"][1]["access_url"] is None
+
+    # Check third resource (with access)
+    assert body["resources"][2]["name"] == "hr"
+    assert body["resources"][2]["has_access"] is True
+    assert body["resources"][2]["access_url"] == "/resources/hr/access"
+
+
+@pytest.mark.asyncio
+async def test_list_resources_empty(client: AsyncClient, monkeypatch):
+    from src.resources import service
+
+    async def fake_list_resources(email: str) -> list[dict]:
+        return []
+
+    monkeypatch.setattr(service, "list_resources_with_access", fake_list_resources)
+
+    resp = await client.post(
+        "/resources/",
+        json={"email": "user@example.com"},
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["resources"] == []
+
+
+@pytest.mark.asyncio
+async def test_list_resources_invalid_email(client: AsyncClient):
+    resp = await client.post(
+        "/resources/",
         json={"email": "not-an-email"},
     )
     assert resp.status_code == 422

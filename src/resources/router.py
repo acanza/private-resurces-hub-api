@@ -4,30 +4,62 @@ from fastapi import APIRouter, Depends, Response, status
 
 from src.resources import service
 from src.resources.config import resources_settings
-from src.resources.dependencies import valid_category_access, valid_resource_id
+from src.resources.dependencies import valid_category_access
 from src.resources.schemas import (
     CategoryAccessRequest,
     CategoryAccessResponse,
-    ResourceResponse,
+    CategoryItemsResponse,
+    ResourceListResponse,
 )
 
 router = APIRouter(prefix="/resources", tags=["resources"])
 
-ResourceDep = Annotated[dict, Depends(valid_resource_id)]
 CategoryAccessDep = Annotated[CategoryAccessRequest, Depends(valid_category_access)]
 
 
-@router.get(
-    "/{resource_id}",
-    response_model=ResourceResponse,
+@router.post(
+    "/",
+    response_model=ResourceListResponse,
     status_code=status.HTTP_200_OK,
-    summary="Get a resource by ID",
+    summary="List all resources with access information",
+    description=(
+        "Lists all directories in the S3 bucket with user's "
+        "access permissions. Requires Bearer token authentication "
+        "from Cognito."
+    ),
     responses={
-        status.HTTP_404_NOT_FOUND: {"description": "Resource not found"},
+        status.HTTP_403_FORBIDDEN: {"description": "User does not have access"},
+        status.HTTP_502_BAD_GATEWAY: {"description": "Upstream AWS error"},
     },
 )
-async def get_resource(resource: ResourceDep) -> ResourceResponse:
-    return resource
+async def list_resources(payload: CategoryAccessRequest) -> ResourceListResponse:
+    resources = await service.list_resources_with_access(payload.email)
+    return ResourceListResponse(resources=resources)
+
+
+@router.get(
+    "/{category_id}",
+    response_model=CategoryItemsResponse,
+    status_code=status.HTTP_200_OK,
+    summary="List items in a category with signed URLs",
+    description=(
+        "Lists all items in a category directory with CloudFront signed URLs. "
+        "Requires Bearer token authentication from Cognito and user must have "
+        "access to the category."
+    ),
+    responses={
+        status.HTTP_403_FORBIDDEN: {"description": "User does not have access"},
+        status.HTTP_502_BAD_GATEWAY: {"description": "Upstream AWS error"},
+    },
+)
+async def get_category_items(
+    category_id: str,
+    payload: Annotated[CategoryAccessRequest, Depends(valid_category_access)],
+) -> CategoryItemsResponse:
+    items = await service.list_category_items_with_signed_urls(
+        payload.email, category_id
+    )
+    return CategoryItemsResponse(items=items)
 
 
 @router.post(
