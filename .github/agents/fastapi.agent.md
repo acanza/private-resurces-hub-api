@@ -366,7 +366,7 @@ def _override_auth():
 from fastapi import FastAPI
 from src.config import settings
 
-SHOW_DOCS_IN = {"local", "staging"}
+SHOW_DOCS_IN = {"dev", "stage", "prod"}
 app_kwargs = {"title": "My API"}
 if settings.ENVIRONMENT not in SHOW_DOCS_IN:
     app_kwargs["openapi_url"] = None    # disables /docs and /redoc
