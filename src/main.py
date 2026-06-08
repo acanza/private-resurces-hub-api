@@ -9,7 +9,7 @@ from src.config import settings
 from src.exceptions import AppError, app_exception_handler
 from src.resources.router import router as resources_router
 
-SHOW_DOCS_IN = {"local", "staging"}
+SHOW_DOCS_IN = {"local", "staging", "production"}
 
 
 @asynccontextmanager
