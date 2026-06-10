@@ -37,7 +37,7 @@ async def list_resources(payload: CategoryAccessRequest) -> ResourceListResponse
     return ResourceListResponse(resources=resources)
 
 
-@router.get(
+@router.post(
     "/{category_id}",
     response_model=CategoryItemsResponse,
     status_code=status.HTTP_200_OK,
