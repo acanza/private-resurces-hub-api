@@ -67,7 +67,7 @@ async def test_get_category_items_ok(
     )
 
     resp = await client.request(
-        "GET",
+        "POST",
         "/resources/tech",
         json={"email": "user@example.com"},
     )
@@ -95,7 +95,7 @@ async def test_get_category_items_empty(
     )
 
     resp = await client.request(
-        "GET",
+        "POST",
         "/resources/tech",
         json={"email": "user@example.com"},
     )
@@ -110,7 +110,7 @@ async def test_get_category_items_forbidden(
     client: AsyncClient, _override_access_denied
 ):
     resp = await client.request(
-        "GET",
+        "POST",
         "/resources/tech",
         json={"email": "user@example.com"},
     )
