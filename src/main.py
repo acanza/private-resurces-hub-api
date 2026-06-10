@@ -1,5 +1,3 @@
-import json
-import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -42,19 +40,4 @@ app.add_middleware(
 app.add_exception_handler(AppError, app_exception_handler)
 app.include_router(resources_router)
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
-
-asgi_handler = Mangum(app)
-
-
-def handler(event, context):
-    logger.info(f"Lambda event: {json.dumps(event)}")
-
-    try:
-        response = asgi_handler(event, context)
-        logger.info(f"Lambda response: {json.dumps(response)}")
-        return response
-    except Exception as e:
-        logger.error(f"Error processing Lambda event: {str(e)}")
-        raise e
+handler = Mangum(app)
